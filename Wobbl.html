@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wobbl — a language for values that aren't quite sure</title>
+<meta name="description" content="Wobbl is a concept programming language built around one idea: most values are a little uncertain. Native tolerance, fuzzy matching, and a pipeline that reads like a sentence.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+
+  /* ---------- tokens ---------- */
+  :root{
+    --ink:      #16211A;
+    --ink-soft: #4B584D;
+    --paper:    #EEF1E7;
+    --card:     #FBFBF6;
+    --grid:     #D9DFD1;
+    --amber:    #C9822A;
+    --coral:    #C24E3E;
+    --teal:     #2E7567;
+    --code-bg:  #16201A;
+    --code-fg:  #E9ECE0;
+    --code-mut: #8A9782;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:      #E9ECE0;
+      --ink-soft: #B7C2B1;
+      --paper:    #12160E;
+      --card:     #181D14;
+      --grid:     #262E20;
+      --amber:    #E0A252;
+      --coral:    #E27A69;
+      --teal:     #57A697;
+      --code-bg:  #0B0F09;
+      --code-fg:  #E9ECE0;
+      --code-mut: #6F7C68;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:      #E9ECE0;
+    --ink-soft: #B7C2B1;
+    --paper:    #12160E;
+    --card:     #181D14;
+    --grid:     #262E20;
+    --amber:    #E0A252;
+    --coral:    #E27A69;
+    --teal:     #57A697;
+    --code-bg:  #0B0F09;
+    --code-fg:  #E9ECE0;
+    --code-mut: #6F7C68;
+  }
+
+  *,*::before,*::after{ box-sizing:inherit; }
+  html{ scroll-behavior:smooth; scroll-padding-top: calc(64px + env(safe-area-inset-top,0px)); }
+  body{
+    margin:0;
+    background:
+      linear-gradient(var(--grid) 1px, transparent 1px) 0 0/ 100% 42px,
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0/ 42px 100%,
+      var(--paper);
+    background-attachment: local, local, fixed;
+    color:var(--ink);
+    font-family:"Work Sans", system-ui, sans-serif;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  img,svg{ max-width:100%; display:block; }
+  a{ color:var(--teal); }
+  a:focus-visible, button:focus-visible, .nav-link:focus-visible{
+    outline: 2px solid var(--coral);
+    outline-offset: 3px;
+    border-radius:2px;
+  }
+  ::selection{ background:var(--amber); color:#181D14; }
+
+  .wrap{ max-width:1080px; margin:0 auto; padding:0 28px; }
+  .prose{ max-width:640px; }
+
+  h1,h2,h3{ font-family:"Fraunces", Georgia, serif; font-weight:600; margin:0; color:var(--ink); }
+  code, pre, .mono{ font-family:"IBM Plex Mono", ui-monospace, monospace; }
+
+  /* ---------- nav ---------- */
+  header.site{
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 20;
+    background: color-mix(in srgb, var(--paper) 86%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--grid);
+  }
+  .navbar{
+    max-width:1080px; margin:0 auto; padding:14px 28px;
+    display:flex; align-items:center; justify-content:space-between;
+    gap: 16px;
+  }
+  .nav-mark{
+    font-family:"Fraunces", serif; font-weight:600; font-size:1.2rem;
+    display:flex; align-items:baseline; gap:2px; text-decoration:none; color:var(--ink);
+  }
+  .nav-mark span{ color: var(--coral); }
+  nav.links{ display:flex; gap:22px; overflow-x:auto; scrollbar-width:none; }
+  nav.links::-webkit-scrollbar{ display:none; }
+  .nav-link{
+    color:var(--ink-soft); text-decoration:none; font-size:0.92rem; white-space:nowrap;
+    border-bottom: 1px solid transparent; padding-bottom:2px;
+  }
+  .nav-link:hover{ color:var(--ink); border-color:var(--amber); }
+
+  /* ---------- hero ---------- */
+  .hero{ padding: 76px 0 64px; }
+  .hero-grid{
+    display:grid; grid-template-columns: 1.15fr 0.85fr; gap:48px; align-items:center;
+  }
+  .wordmark{
+    font-size: clamp(3.2rem, 9vw, 6rem);
+    line-height:1;
+    letter-spacing: -0.01em;
+    margin: 0 0 18px;
+    display:flex;
+  }
+  .wordmark .letter{
+    display:inline-block;
+  }
+  @media (prefers-reduced-motion: no-preference){
+    .wordmark .letter{ animation: settle 0.9s cubic-bezier(.34,1.56,.64,1) both; }
+    .wordmark .letter:nth-child(1){ animation-delay: 0.02s; }
+    .wordmark .letter:nth-child(2){ animation-delay: 0.09s; }
+    .wordmark .letter:nth-child(3){ animation-delay: 0.16s; }
+    .wordmark .letter:nth-child(4){ animation-delay: 0.23s; }
+    .wordmark .letter:nth-child(5){ animation-delay: 0.30s; color:var(--coral); }
+  }
+  @keyframes settle{
+    0%{   transform: translateY(-22px) rotate(-8deg); opacity:0; }
+    55%{  transform: translateY(6px) rotate(4deg);     opacity:1; }
+    75%{  transform: translateY(-3px) rotate(-1.5deg); }
+    100%{ transform: translateY(0) rotate(0deg); }
+  }
+  .tagline{
+    font-family:"Fraunces", serif; font-weight:400; font-style:italic;
+    font-size: clamp(1.15rem, 2.4vw, 1.5rem);
+    color: var(--ink); margin: 0 0 16px; max-width: 30ch;
+  }
+  .subhead{ color:var(--ink-soft); font-size:1.03rem; max-width:46ch; margin:0 0 28px; }
+  .cta-row{ display:flex; gap:22px; flex-wrap:wrap; align-items:center; }
+  .cta{
+    font-size:0.95rem; text-decoration:none; color:var(--ink);
+    border-bottom:2px solid var(--amber); padding-bottom:3px;
+  }
+  .cta.ghost{ border-color: var(--grid); color:var(--ink-soft); }
+  .cta:hover{ border-color: var(--coral); color:var(--ink); }
+
+  .measure{
+    background: var(--card);
+    border:1px solid var(--grid);
+    border-radius:10px;
+    padding:22px 22px 16px;
+  }
+  .measure-label{ font-size:0.8rem; color:var(--ink-soft); margin-bottom:10px; }
+  .measure-label b{ color:var(--ink); font-weight:600; }
+  .wobble-graphic{ width:100%; height:auto; }
+  .wobble-line{ transform-origin:center; }
+  .wobble-band{ transform-origin:center; }
+  @media (prefers-reduced-motion: no-preference){
+    .wobble-line{ animation: drift 4.6s ease-in-out infinite; }
+    .wobble-band{ animation: pulse 6s ease-in-out infinite; }
+  }
+  @keyframes drift{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-4px);} }
+  @keyframes pulse{ 0%,100%{ opacity:.16; } 50%{ opacity:.30; } }
+  .measure-value{ font-family:"IBM Plex Mono", monospace; font-size:0.85rem; color:var(--ink-soft); text-align:center; margin-top:4px;}
+  .measure-value b{ color:var(--coral); font-weight:600; }
+
+  /* ---------- section shell ---------- */
+  section{ padding: 58px 0; border-top: 1px solid var(--grid); }
+  .section-head{ margin-bottom: 30px; }
+  .section-head h2{ font-size: clamp(1.6rem, 3.2vw, 2.1rem); margin-bottom:10px; }
+  .section-head p{ color:var(--ink-soft); max-width: 56ch; }
+
+  /* ---------- why ---------- */
+  .why p{ margin: 0 0 16px; color: var(--ink-soft); }
+  .why strong{ color:var(--ink); font-weight:600; }
+
+  /* ---------- code tour ---------- */
+  .feature{
+    display:grid; grid-template-columns: 0.85fr 1.15fr; gap:34px;
+    padding: 34px 0; border-top:1px solid var(--grid);
+  }
+  .feature:first-of-type{ border-top:none; padding-top:0; }
+  .feature h3{ font-size:1.3rem; margin-bottom:10px; }
+  .feature p{ color:var(--ink-soft); margin:0 0 16px; max-width:42ch; }
+  .annot{
+    display:inline-flex; align-items:center; gap:8px;
+    font-size:0.83rem; color:var(--ink); background:var(--card);
+    border-left:3px solid var(--coral); padding:7px 11px; border-radius:0 6px 6px 0;
+    font-family:"IBM Plex Mono", monospace;
+  }
+  pre.code{
+    background:var(--code-bg); color:var(--code-fg);
+    border-radius:10px; padding:18px 20px; overflow-x:auto;
+    font-size:0.87rem; line-height:1.7; margin:0;
+    border:1px solid color-mix(in srgb, var(--code-bg) 60%, black 10%);
+  }
+  pre.code code{ font-family:"IBM Plex Mono", monospace; white-space:pre; }
+  .tok-kw{ color: var(--amber); }
+  .tok-str{ color: var(--teal); }
+  .tok-op{  color: var(--coral); font-weight:600; }
+  .tok-num{ color: var(--code-fg); }
+  .tok-com{ color: var(--code-mut); font-style:italic; }
+  .tok-fn{  color: #C7B8E8; }
+
+  /* ---------- playground ---------- */
+  .pg-tabs{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px; }
+  .pg-tab{
+    font-family:"IBM Plex Mono", monospace; font-size:0.8rem;
+    padding:7px 13px; border-radius:6px; border:1px solid var(--grid);
+    background:var(--card); color:var(--ink-soft); cursor:pointer;
+  }
+  .pg-tab.active{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  .pg-tab:hover:not(.active){ border-color:var(--amber); color:var(--ink); }
+  .playground-shell{ display:grid; grid-template-columns:1fr 1fr; gap:22px; align-items:start; }
+  .pg-pane-label{
+    font-size:0.76rem; color:var(--ink-soft); margin-bottom:8px;
+    font-family:"IBM Plex Mono", monospace; letter-spacing:0.02em;
+  }
+  textarea#pg-editor{
+    width:100%; min-height:280px; background:var(--code-bg); color:var(--code-fg);
+    font-family:"IBM Plex Mono", monospace; font-size:0.85rem; line-height:1.7;
+    border:1px solid var(--grid); border-radius:10px; padding:16px 18px;
+    resize:vertical; tab-size:2;
+  }
+  .pg-controls{ display:flex; gap:12px; margin-top:12px; align-items:center; flex-wrap:wrap; }
+  .pg-run{
+    background:var(--amber); color:#181D14; border:none; border-radius:6px;
+    padding:9px 18px; font-weight:600; font-family:"Work Sans", sans-serif;
+    cursor:pointer; font-size:0.88rem;
+  }
+  .pg-run:hover{ filter:brightness(1.07); }
+  .pg-reset{
+    background:transparent; border:1px solid var(--grid); color:var(--ink-soft);
+    border-radius:6px; padding:9px 16px; cursor:pointer;
+    font-family:"Work Sans", sans-serif; font-size:0.85rem;
+  }
+  .pg-reset:hover{ color:var(--ink); border-color:var(--amber); }
+  pre#pg-output{
+    background:var(--code-bg); color:var(--code-fg); border-radius:10px;
+    padding:16px 18px; min-height:280px; margin:0;
+    font-family:"IBM Plex Mono", monospace; font-size:0.85rem; line-height:1.8;
+    overflow:auto; white-space:pre-wrap; border:1px solid var(--grid);
+  }
+  pre#pg-output.pg-error{ color:var(--coral); }
+  .pg-hint{ color:var(--ink-soft); font-size:0.85rem; margin-top:16px; max-width:60ch; }
+  @media (max-width:760px){
+    .playground-shell{ grid-template-columns:1fr; }
+  }
+
+  /* ---------- spec sheet ---------- */
+  .spec-wrap{ overflow-x:auto; border:1px solid var(--grid); border-radius:10px; }
+  table.spec{ border-collapse:collapse; width:100%; min-width:560px; background:var(--card); }
+  table.spec th, table.spec td{
+    text-align:left; padding:14px 18px; border-bottom:1px solid var(--grid);
+    font-size:0.93rem;
+  }
+  table.spec th{
+    font-family:"Fraunces", serif; font-weight:600; color:var(--ink);
+    background: color-mix(in srgb, var(--grid) 40%, var(--card));
+  }
+  table.spec td.old{ color:var(--ink-soft); }
+  table.spec td.new{ font-family:"IBM Plex Mono", monospace; font-size:0.88rem; color:var(--coral); }
+  table.spec tr:last-child td{ border-bottom:none; }
+
+  /* ---------- get started ---------- */
+  .terminal{
+    background:var(--code-bg); color:var(--code-fg); border-radius:10px;
+    padding:20px 22px; font-family:"IBM Plex Mono", monospace; font-size:0.86rem;
+    line-height:1.8; position:relative; overflow-x:auto;
+  }
+  .terminal .p{ color: var(--teal); }
+  .terminal .comment{ color:var(--code-mut); }
+  .copy-btn{
+    position:absolute; top:12px; right:12px;
+    background:transparent; color:var(--code-mut); border:1px solid color-mix(in srgb, var(--code-fg) 25%, transparent);
+    border-radius:6px; padding:5px 10px; font-size:0.75rem; cursor:pointer;
+    font-family:"Work Sans", sans-serif;
+  }
+  .copy-btn:hover{ color:var(--code-fg); border-color: var(--amber); }
+  .note{ color:var(--ink-soft); font-size:0.92rem; max-width:56ch; margin-top:18px; }
+  .note strong{ color:var(--ink); }
+
+  footer{ padding: 40px 0 calc(40px + env(safe-area-inset-bottom,0px)); border-top:1px solid var(--grid); }
+  .foot-row{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; color:var(--ink-soft); font-size:0.85rem; }
+  .foot-row a{ color:var(--ink-soft); }
+
+  @media (max-width: 760px){
+    .hero-grid{ grid-template-columns: 1fr; }
+    .feature{ grid-template-columns: 1fr; gap:16px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="navbar">
+    <a class="nav-mark" href="#top">Wobbl<span>.</span></a>
+    <nav class="links" aria-label="Section navigation">
+      <a class="nav-link" href="#why">Why wobble</a>
+      <a class="nav-link" href="#tour">Syntax tour</a>
+      <a class="nav-link" href="#playground">Try it</a>
+      <a class="nav-link" href="#spec">Spec sheet</a>
+      <a class="nav-link" href="#start">Get started</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top" class="wrap">
+
+  <!-- ================= HERO ================= -->
+  <section class="hero" style="border-top:none; padding-bottom:64px;">
+    <div class="hero-grid">
+      <div>
+        <h1 class="wordmark" aria-label="Wobbl">
+          <span class="letter">W</span><span class="letter">o</span><span class="letter">b</span><span class="letter">b</span><span class="letter">l</span>
+        </h1>
+        <p class="tagline">A language that knows nothing is ever quite exact.</p>
+        <p class="subhead">Wobbl gives values room to move: numbers written with their own tolerance, comparisons that can be approximate on purpose, and a syntax built for pattern matching and pipelines instead of nested branches. People who write it call themselves <strong style="color:var(--ink)">wonks</strong>.</p>
+        <div class="cta-row">
+          <a class="cta" href="#playground">Try it live</a>
+          <a class="cta ghost" href="#tour">Read the syntax tour</a>
+        </div>
+      </div>
+
+      <div class="measure">
+        <div class="measure-label"><b>radius</b> — nominal 12.0, tolerance ± 0.3</div>
+        <svg class="wobble-graphic" viewBox="0 0 300 110" role="img" aria-label="A wavy line running through a shaded tolerance band, representing an uncertain value.">
+          <rect class="wobble-band" x="0" y="35" width="300" height="42" rx="8" fill="var(--coral)" opacity="0.18"/>
+          <path class="wobble-line" d="M0,58 C 28,30 55,92 84,54 C 112,18 140,96 168,56 C 196,20 224,90 252,54 C 268,36 286,60 300,56"
+                fill="none" stroke="var(--ink)" stroke-width="2.5" stroke-linecap="round"/>
+          <circle cx="150" cy="56" r="5.5" fill="var(--coral)" stroke="var(--card)" stroke-width="2.5"/>
+        </svg>
+        <div class="measure-value">let radius <b>~=</b> 12.0 <b>+/-</b> 0.3</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= WHY ================= -->
+  <section id="why" class="why">
+    <div class="section-head">
+      <h2>Why wobble</h2>
+    </div>
+    <div class="prose">
+      <p>A sensor reads 9.8 m/s² today and 9.81 tomorrow. A recipe calls for "a cup, more or less." A user types a price as $19.99 or just $20. Most languages force you to collapse all of that into one exact number and quietly forget the rest.</p>
+      <p>Wobbl keeps the rest. You write down how sure you are, right alongside the value, and the language carries that uncertainty through your arithmetic, your comparisons, and your branching — instead of making you build it yourself out of tuples and hope.</p>
+      <p>It's still a small, opinionated, functional-leaning language underneath: <strong>immutable by default</strong>, first-class functions, pattern matching over deep if-chains, and a pipeline operator for code that reads left to right. The wobble is the headline feature, not the whole language.</p>
+    </div>
+  </section>
+
+  <!-- ================= SYNTAX TOUR ================= -->
+  <section id="tour">
+    <div class="section-head">
+      <h2>A tour, in five moves</h2>
+      <p>Every language demo starts with hello world. This one ends somewhere a little stranger.</p>
+    </div>
+
+    <div class="feature">
+      <div>
+        <h3>Say what you mean</h3>
+        <p>No <code class="mono">main()</code>, no boilerplate. A file is a script; <code class="mono">say</code> writes to the console, <code class="mono">let</code> binds a name that can't be reassigned.</p>
+        <span class="annot">let → immutable by default</span>
+      </div>
+      <pre class="code"><code><span class="tok-com"># hello.wob</span>
+<span class="tok-kw">let</span> name = <span class="tok-str">"Ada"</span>
+<span class="tok-fn">say</span> <span class="tok-str">"Hello, {name}!"</span>
+<span class="tok-com"># => Hello, Ada!</span></code></pre>
+    </div>
+
+    <div class="feature">
+      <div>
+        <h3>Give it room to move</h3>
+        <p>The <code class="mono">~=</code> operator declares a wobbly value with a nominal amount and a tolerance. Arithmetic on wobbly values propagates the uncertainty automatically.</p>
+        <span class="annot">+/- → tolerance, carried through math</span>
+      </div>
+      <pre class="code"><code><span class="tok-com"># a wobbly value: nominal 12.0, tolerance ±0.3</span>
+<span class="tok-kw">let</span> radius <span class="tok-op">~=</span> 12.0 <span class="tok-op">+/-</span> 0.3
+
+<span class="tok-kw">jig</span> <span class="tok-fn">area</span>(r) <span class="tok-op">=></span> 3.14159 * r * r
+
+<span class="tok-fn">say</span> <span class="tok-str">"Area is {area(radius)}"</span>
+<span class="tok-com"># => Area is 452.4 ± 22.6</span>
+
+<span class="tok-kw">let</span> exact = <span class="tok-fn">settle</span>(radius, using: nearest)
+<span class="tok-com"># => 12.0 — collapses the wobble when you need one number</span></code></pre>
+    </div>
+
+    <div class="feature">
+      <div>
+        <h3>Ask, don't branch</h3>
+        <p><code class="mono">when</code> replaces long if/else chains. The <code class="mono">~=</code> operator works here too — <code class="mono">is ~= 20 +/- 2</code> matches anything close enough, not just equal.</p>
+        <span class="annot">is ~= → fuzzy match, not exact</span>
+      </div>
+      <pre class="code"><code><span class="tok-kw">jig</span> <span class="tok-fn">describe</span>(temp) <span class="tok-op">=></span> <span class="tok-kw">when</span> temp {
+  is < 0          <span class="tok-op">=></span> <span class="tok-str">"freezing"</span>
+  is <span class="tok-op">~=</span> 20 <span class="tok-op">+/-</span> 2  <span class="tok-op">=></span> <span class="tok-str">"room temperature"</span>
+  is > 35         <span class="tok-op">=></span> <span class="tok-str">"scorching"</span>
+  else            <span class="tok-op">=></span> <span class="tok-str">"somewhere in between"</span>
+}
+
+<span class="tok-fn">say</span> <span class="tok-fn">describe</span>(21.4)  <span class="tok-com"># => room temperature</span></code></pre>
+    </div>
+
+    <div class="feature">
+      <div>
+        <h3>Read code like a sentence</h3>
+        <p>The pipeline operator <code class="mono">|></code> threads a value through a chain of calls, left to right, instead of nesting them inside out.</p>
+        <span class="annot">|> → pipe result into next call</span>
+      </div>
+      <pre class="code"><code><span class="tok-kw">let</span> total = [4, 8, 15, 16, 23, 42]
+  <span class="tok-op">|></span> <span class="tok-fn">filter</span>(x <span class="tok-op">=></span> x > 10)
+  <span class="tok-op">|></span> <span class="tok-fn">map</span>(x <span class="tok-op">=></span> x * 2)
+  <span class="tok-op">|></span> <span class="tok-fn">reduce</span>(0, (sum, x) <span class="tok-op">=></span> sum + x)
+
+<span class="tok-fn">say</span> total  <span class="tok-com"># => 192</span></code></pre>
+    </div>
+
+    <div class="feature">
+      <div>
+        <h3>Functions that remember</h3>
+        <p><code class="mono">jig</code> declares a function — closures capture their surrounding scope like you'd expect, and <code class="mono">mut</code> opts a single binding into mutability when you actually need it.</p>
+        <span class="annot">mut → the deliberate exception to let</span>
+      </div>
+      <pre class="code"><code><span class="tok-kw">jig</span> <span class="tok-fn">make_counter</span>() {
+  <span class="tok-kw">mut</span> count = 0
+  <span class="tok-kw">return</span> () <span class="tok-op">=></span> {
+    count = count + 1
+    count
+  }
+}
+
+<span class="tok-kw">let</span> tick = <span class="tok-fn">make_counter</span>()
+<span class="tok-fn">say</span> tick()  <span class="tok-com"># => 1</span>
+<span class="tok-fn">say</span> tick()  <span class="tok-com"># => 2</span></code></pre>
+    </div>
+  </section>
+
+  <!-- ================= PLAYGROUND ================= -->
+  <section id="playground">
+    <div class="section-head">
+      <h2>Try it</h2>
+      <p>A small Wobbl interpreter, written in JavaScript, running right here in the page. These are the same five examples from the tour above — edit anything and run it again.</p>
+    </div>
+
+    <div class="pg-tabs" role="tablist" aria-label="Playground examples">
+      <button class="pg-tab active" data-idx="0" type="button">Hello world</button>
+      <button class="pg-tab" data-idx="1" type="button">Wobbly values</button>
+      <button class="pg-tab" data-idx="2" type="button">Pattern match</button>
+      <button class="pg-tab" data-idx="3" type="button">Pipeline</button>
+      <button class="pg-tab" data-idx="4" type="button">Closures</button>
+    </div>
+
+    <div class="playground-shell">
+      <div>
+        <div class="pg-pane-label">editor</div>
+        <textarea id="pg-editor" spellcheck="false" aria-label="Wobbl code editor"></textarea>
+        <div class="pg-controls">
+          <button class="pg-run" id="pg-run" type="button">▸ Run</button>
+          <button class="pg-reset" id="pg-reset" type="button">Reset example</button>
+        </div>
+      </div>
+      <div>
+        <div class="pg-pane-label">output</div>
+        <pre id="pg-output" aria-live="polite"></pre>
+      </div>
+    </div>
+    <p class="pg-hint">This interpreter covers the subset of Wobbl shown on this page — wobbly values, <code class="mono">when</code>, <code class="mono">|></code>, closures. Stray outside that and it'll tell you honestly where it got stuck, the same way a real compiler would.</p>
+  </section>
+
+  <!-- ================= SPEC SHEET ================= -->
+  <section id="spec">
+    <div class="section-head">
+      <h2>Spec sheet</h2>
+      <p>Read like a tolerance table, because that felt right for a language about tolerance.</p>
+    </div>
+    <div class="spec-wrap">
+      <table class="spec">
+        <thead>
+          <tr><th>Feature</th><th>Typical language</th><th>Wobbl</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Mutability</td><td class="old">Mutable unless you opt out</td><td class="new">let by default, mut opts in</td></tr>
+          <tr><td>Uncertainty</td><td class="old">Not modeled — pick one number</td><td class="new">~= nominal +/- tolerance</td></tr>
+          <tr><td>Equality</td><td class="old">Exact == only</td><td class="new">Exact == and fuzzy ~=</td></tr>
+          <tr><td>Branching</td><td class="old">if / else if / else</td><td class="new">when { is … => … }</td></tr>
+          <tr><td>Composition</td><td class="old">Nested calls, read inside-out</td><td class="new">|> pipeline, read left to right</td></tr>
+          <tr><td>Comments</td><td class="old">//</td><td class="new"># </td></tr>
+          <tr><td>File extension</td><td class="old">.py, .js, .rb …</td><td class="new">.wob</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================= GET STARTED ================= -->
+  <section id="start">
+    <div class="section-head">
+      <h2>Get started</h2>
+      <p>Here's the honest version of what that would look like.</p>
+    </div>
+    <p class="note" style="margin-top:0; margin-bottom:22px;">Wobbl source files use the <code class="mono" style="color:var(--coral)">.wob</code> extension — <code class="mono">hello.wob</code>, <code class="mono">main.wob</code>, and so on. One language, one extension; no <code class="mono">.wobx</code> or <code class="mono">.wbl</code> variants to keep straight.</p>
+    <div class="terminal" id="terminal-block">
+      <button class="copy-btn" id="copy-btn" type="button" aria-label="Copy terminal text">Copy</button>
+      <div><span class="p">$</span> wob new orchard</div>
+      <div class="comment">  creating orchard/main.wob …</div>
+      <div><span class="p">$</span> cd orchard &amp;&amp; wob run</div>
+      <div>Hello, World!</div>
+      <div><span class="p">$</span> <span class="comment"># there's no compiler behind this yet — see below</span></div>
+    </div>
+    <p class="note"><strong>Wobbl is a concept language</strong> — a syntax sketch, not a shipped compiler. Everything on this page runs in nobody's terminal but this thought experiment. If you like the idea of values that carry their own uncertainty, steal it, build it, or tell a wonk it's a terrible idea. Either reaction means it did its job.</p>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap foot-row">
+    <span>Wobbl — precision, with a little give.</span>
+    <span>Designed as a thought experiment, 2026.</span>
+  </div>
+</footer>
+
+<script>
+  (function(){
+    var btn = document.getElementById('copy-btn');
+    var block = document.getElementById('terminal-block');
+    if(!btn || !block) return;
+    btn.addEventListener('click', function(){
+      var text = Array.from(block.querySelectorAll('div'))
+        .map(function(d){ return d.textContent.replace(/^\s+/,''); })
+        .join('\n');
+      var done = function(){
+        var original = btn.textContent;
+        btn.textContent = 'Copied';
+        setTimeout(function(){ btn.textContent = original; }, 1600);
+      };
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done).catch(function(){});
+      }
+    });
+  })();
+</script>
+
+<script>
+  /* =========================================================
+     A tiny real interpreter for a subset of Wobbl.
+     Not a joke — this actually tokenizes, parses and evaluates
+     the code in the editor below. It's deliberately small:
+     numbers, strings with {interpolation}, wobbly values (~= +/-),
+     let/mut/jig, when/is pattern matching, |> pipelines with
+     map/filter/reduce, closures, and settle().
+     ========================================================= */
+  (function(){
+
+    var OUTPUT_SINK = [];
+
+    function ReturnSignal(value){ this.value = value; }
+
+    /* ---------- lexer ---------- */
+    function tokenize(src){
+      var tokens = [];
+      var i = 0, n = src.length, parenDepth = 0, lastWasNL = false;
+      while(i < n){
+        var c = src[i];
+        if(c === '#'){ while(i < n && src[i] !== '\n') i++; continue; }
+        if(c === '\n'){
+          i++;
+          if(parenDepth === 0 && !lastWasNL && tokens.length){
+            tokens.push({type:'NEWLINE'}); lastWasNL = true;
+          }
+          continue;
+        }
+        if(c === ' ' || c === '\t' || c === '\r'){ i++; continue; }
+        lastWasNL = false;
+        if(c === '"'){
+          var j = i + 1, buf = '';
+          while(j < n && src[j] !== '"'){ buf += src[j]; j++; }
+          tokens.push({type:'STR', value: buf});
+          i = j + 1;
+          continue;
+        }
+        if(/[0-9]/.test(c)){
+          var j2 = i, buf2 = '';
+          while(j2 < n && /[0-9.]/.test(src[j2])){ buf2 += src[j2]; j2++; }
+          tokens.push({type:'NUM', value: parseFloat(buf2)});
+          i = j2;
+          continue;
+        }
+        if(/[A-Za-z_]/.test(c)){
+          var j3 = i, buf3 = '';
+          while(j3 < n && /[A-Za-z0-9_]/.test(src[j3])){ buf3 += src[j3]; j3++; }
+          tokens.push({type:'ID', value: buf3});
+          i = j3;
+          continue;
+        }
+        var three = src.slice(i, i+3);
+        if(three === '+/-'){ tokens.push({type:'+/-'}); i += 3; continue; }
+        var two = src.slice(i, i+2);
+        if(['~=','|>','=>','==','!=','>=','<='].indexOf(two) !== -1){ tokens.push({type: two}); i += 2; continue; }
+        if('()[]{},:+-*/<>='.indexOf(c) !== -1){
+          if(c === '(' || c === '[') parenDepth++;
+          if(c === ')' || c === ']') parenDepth = Math.max(0, parenDepth - 1);
+          tokens.push({type: c});
+          i++;
+          continue;
+        }
+        i++; // skip unknown char
+      }
+      tokens.push({type:'EOF'});
+      return tokens;
+    }
+
+    /* ---------- parser ---------- */
+    function parse(tokens){
+      var pos = 0;
+      function peek(k){ return tokens[pos + (k||0)]; }
+      function at(type){ return peek().type === type; }
+      function eat(type){
+        if(type && peek().type !== type) throw new Error("expected '" + type + "' but found '" + peek().type + "'");
+        return tokens[pos++];
+      }
+      function skipNL(){ while(at('NEWLINE')) pos++; }
+
+      function parseProgram(){
+        var stmts = [];
+        skipNL();
+        while(!at('EOF')){ stmts.push(parseStatement()); skipNL(); }
+        return {type:'Program', body: stmts};
+      }
+      function parseBlock(){
+        eat('{'); skipNL();
+        var stmts = [];
+        while(!at('}') && !at('EOF')){ stmts.push(parseStatement()); skipNL(); }
+        eat('}');
+        return {type:'Block', body: stmts};
+      }
+      function parseStatement(){
+        var t = peek();
+        if(t.type === 'ID' && t.value === 'let') return parseLet();
+        if(t.type === 'ID' && t.value === 'mut') return parseMut();
+        if(t.type === 'ID' && t.value === 'jig') return parseJig();
+        if(t.type === 'ID' && t.value === 'say'){ pos++; return {type:'Say', expr: parseExpr()}; }
+        if(t.type === 'ID' && t.value === 'return'){ pos++; return {type:'Return', expr: parseExpr()}; }
+        if(t.type === 'ID' && peek(1) && peek(1).type === '='){
+          var name = eat('ID').value; eat('=');
+          return {type:'Assign', name: name, expr: parseExpr()};
+        }
+        return {type:'ExprStmt', expr: parseExpr()};
+      }
+      function parseLet(){
+        eat('ID');
+        var name = eat('ID').value;
+        if(at('~=')){
+          eat('~=');
+          var nominal = parseAdditive();
+          eat('+/-');
+          var tol = parseAdditive();
+          return {type:'Let', name: name, wobble: true, nominal: nominal, tol: tol};
+        }
+        eat('=');
+        return {type:'Let', name: name, wobble: false, expr: parseExpr()};
+      }
+      function parseMut(){
+        eat('ID');
+        var name = eat('ID').value;
+        eat('=');
+        return {type:'Mut', name: name, expr: parseExpr()};
+      }
+      function parseJig(){
+        eat('ID');
+        var name = eat('ID').value;
+        eat('(');
+        var params = [];
+        if(!at(')')){
+          params.push(eat('ID').value);
+          while(at(',')){ eat(','); params.push(eat('ID').value); }
+        }
+        eat(')');
+        if(at('=>')){ eat('=>'); return {type:'Jig', name:name, params:params, body: parseExpr(), isBlock:false}; }
+        return {type:'Jig', name:name, params:params, body: parseBlock(), isBlock:true};
+      }
+      function parseExpr(){ return parsePipeline(); }
+      function parsePipeline(){
+        var left = parseComparison();
+        for(;;){
+          var save = pos;
+          skipNL();
+          if(at('|>')){
+            eat('|>');
+            var calleeName = eat('ID').value;
+            eat('(');
+            var args = parseArgList();
+            eat(')');
+            left = {type:'Call', calleeName: calleeName, args: [{positional:true, expr:left}].concat(args)};
+          } else { pos = save; break; }
+        }
+        return left;
+      }
+      function parseArgList(){
+        var args = [];
+        if(!at(')')){
+          args.push(parseArg());
+          while(at(',')){ eat(','); args.push(parseArg()); }
+        }
+        return args;
+      }
+      function parseArg(){
+        if(at('ID') && peek(1) && peek(1).type === ':'){
+          var key = eat('ID').value; eat(':');
+          return {keyword:key, expr: parseExpr()};
+        }
+        return {positional:true, expr: parseExpr()};
+      }
+      function parseComparison(){
+        var left = parseAdditive();
+        var ops = ['==','!=','<=','>=','<','>'];
+        if(ops.indexOf(peek().type) !== -1){
+          var op = eat(peek().type).type;
+          return {type:'Binary', op:op, left:left, right: parseAdditive()};
+        }
+        return left;
+      }
+      function parseAdditive(){
+        var left = parseMultiplicative();
+        while(at('+') || at('-')){
+          var op = eat(peek().type).type;
+          left = {type:'Binary', op:op, left:left, right: parseMultiplicative()};
+        }
+        return left;
+      }
+      function parseMultiplicative(){
+        var left = parseUnary();
+        while(at('*') || at('/')){
+          var op = eat(peek().type).type;
+          left = {type:'Binary', op:op, left:left, right: parseUnary()};
+        }
+        return left;
+      }
+      function parseUnary(){
+        if(at('-')){ eat('-'); return {type:'Neg', expr: parseUnary()}; }
+        return parsePrimary();
+      }
+      function parsePrimary(){
+        var t = peek();
+        if(t.type === 'NUM'){ pos++; return {type:'Num', value: t.value}; }
+        if(t.type === 'STR'){ pos++; return {type:'Str', value: t.value}; }
+        if(t.type === '['){
+          pos++;
+          var elems = [];
+          if(!at(']')){
+            elems.push(parseExpr());
+            while(at(',')){ eat(','); elems.push(parseExpr()); }
+          }
+          eat(']');
+          return {type:'Array', elements: elems};
+        }
+        if(t.type === 'ID' && t.value === 'when'){
+          pos++;
+          var subject = parseExpr();
+          eat('{'); skipNL();
+          var clauses = [], elseExpr = null;
+          while(!at('}')){
+            if(at('ID') && peek().value === 'else'){
+              pos++; eat('=>'); elseExpr = parseExpr();
+            } else {
+              eat('ID'); // 'is'
+              var cmpOps = ['<','>','<=','>=','==','~='];
+              if(cmpOps.indexOf(peek().type) === -1) throw new Error('expected a comparison after is');
+              var op = eat(peek().type).type;
+              var value = parseAdditive();
+              var tol = null;
+              if(op === '~=' && at('+/-')){ eat('+/-'); tol = parseAdditive(); }
+              eat('=>');
+              clauses.push({op:op, value:value, tol:tol, result: parseExpr()});
+            }
+            skipNL();
+          }
+          eat('}');
+          return {type:'When', subject: subject, clauses: clauses, elseExpr: elseExpr};
+        }
+        if(t.type === '('){
+          var save = pos;
+          pos++;
+          var params = [], isParamList = true;
+          if(!at(')')){
+            while(true){
+              if(at('ID')){ params.push(eat('ID').value); }
+              else { isParamList = false; break; }
+              if(at(',')){ eat(','); continue; }
+              break;
+            }
+          }
+          if(isParamList && at(')')){
+            eat(')');
+            if(at('=>')){
+              eat('=>');
+              if(at('{')) return {type:'Arrow', params:params, body: parseBlock(), isBlock:true};
+              return {type:'Arrow', params:params, body: parseExpr(), isBlock:false};
+            }
+          }
+          pos = save;
+          eat('(');
+          var inner = parseExpr();
+          eat(')');
+          return inner;
+        }
+        if(t.type === 'ID'){
+          if(peek(1) && peek(1).type === '=>'){
+            var p = eat('ID').value;
+            eat('=>');
+            if(at('{')) return {type:'Arrow', params:[p], body: parseBlock(), isBlock:true};
+            return {type:'Arrow', params:[p], body: parseExpr(), isBlock:false};
+          }
+          var name = eat('ID').value;
+          if(at('(')){
+            eat('(');
+            var args = parseArgList();
+            eat(')');
+            return {type:'Call', calleeName:name, args:args};
+          }
+          return {type:'Ident', name: name};
+        }
+        throw new Error("didn't expect '" + t.type + "' here");
+      }
+      return parseProgram();
+    }
+
+    /* ---------- runtime values ---------- */
+    function makeEnv(parent){ return {vars: new Map(), parent: parent}; }
+    function envGet(env, name){
+      var e = env;
+      while(e){ if(e.vars.has(name)) return e.vars.get(name); e = e.parent; }
+      throw new Error("'" + name + "' isn't defined");
+    }
+    function envSet(env, name, value){ env.vars.set(name, value); }
+    function envAssign(env, name, value){
+      var e = env;
+      while(e){ if(e.vars.has(name)){ e.vars.set(name, value); return; } e = e.parent; }
+      env.vars.set(name, value);
+    }
+    function isWobble(v){ return v && typeof v === 'object' && v.__wobble; }
+    function wobble(nominal, tol){ return {__wobble:true, nominal:nominal, tol:tol}; }
+    function nomOf(v){ return isWobble(v) ? v.nominal : v; }
+    function tolOf(v){ return isWobble(v) ? v.tol : 0; }
+
+    function binWobble(op, a, b){
+      if(!isWobble(a) && !isWobble(b)){
+        if(op === '+') return a + b;
+        if(op === '-') return a - b;
+        if(op === '*') return a * b;
+        if(op === '/') return a / b;
+      }
+      var an = nomOf(a), at_ = tolOf(a), bn = nomOf(b), bt = tolOf(b);
+      var nominal, tol;
+      if(op === '+'){ nominal = an + bn; tol = at_ + bt; }
+      else if(op === '-'){ nominal = an - bn; tol = at_ + bt; }
+      else if(op === '*'){ nominal = an * bn; tol = Math.abs(an)*bt + Math.abs(bn)*at_; }
+      else { nominal = an / bn; tol = (Math.abs(an)*bt + Math.abs(bn)*at_) / ((bn*bn) || 1); }
+      return wobble(nominal, tol);
+    }
+
+    function fmtNum(n){
+      if(Number.isInteger(n)) return String(n);
+      return String(Math.round(n * 10) / 10);
+    }
+    function displayValue(v){
+      if(v === undefined || v === null) return '';
+      if(isWobble(v)) return Math.abs(v.tol) < 1e-9 ? fmtNum(v.nominal) : (fmtNum(v.nominal) + ' \u00B1 ' + fmtNum(v.tol));
+      if(Array.isArray(v)) return '[' + v.map(displayValue).join(', ') + ']';
+      if(typeof v === 'boolean') return v ? 'true' : 'false';
+      if(typeof v === 'number') return fmtNum(v);
+      return String(v);
+    }
+
+    function interpolateString(raw, env){
+      var out = '', i = 0;
+      while(i < raw.length){
+        if(raw[i] === '{'){
+          var j = i + 1, depth = 1, buf = '';
+          while(j < raw.length && depth > 0){
+            if(raw[j] === '{') depth++;
+            else if(raw[j] === '}'){ depth--; if(depth === 0) break; }
+            buf += raw[j]; j++;
+          }
+          var ast = parse(tokenize(buf + '\n'));
+          var val = (ast.body.length && ast.body[0].type === 'ExprStmt') ? evalExpr(ast.body[0].expr, env) : buf;
+          out += displayValue(val);
+          i = j + 1;
+        } else { out += raw[i]; i++; }
+      }
+      return out;
+    }
+
+    function evalExpr(node, env){
+      switch(node.type){
+        case 'Num': return node.value;
+        case 'Str': return interpolateString(node.value, env);
+        case 'Ident': return envGet(env, node.name);
+        case 'Array': return node.elements.map(function(e){ return evalExpr(e, env); });
+        case 'Neg': { var v = evalExpr(node.expr, env); return isWobble(v) ? wobble(-v.nominal, v.tol) : -v; }
+        case 'Binary': {
+          var l = evalExpr(node.left, env), r = evalExpr(node.right, env);
+          if(['+','-','*','/'].indexOf(node.op) !== -1) return binWobble(node.op, l, r);
+          var ln = nomOf(l), rn = nomOf(r);
+          if(node.op === '==') return ln === rn;
+          if(node.op === '!=') return ln !== rn;
+          if(node.op === '<') return ln < rn;
+          if(node.op === '>') return ln > rn;
+          if(node.op === '<=') return ln <= rn;
+          if(node.op === '>=') return ln >= rn;
+          break;
+        }
+        case 'When': {
+          var subj = evalExpr(node.subject, env);
+          var sn = nomOf(subj);
+          for(var k=0;k<node.clauses.length;k++){
+            var cl = node.clauses[k], matched = false;
+            if(cl.op === '~='){
+              var nom = nomOf(evalExpr(cl.value, env));
+              var tol = cl.tol ? nomOf(evalExpr(cl.tol, env)) : 0;
+              matched = Math.abs(sn - nom) <= tol;
+            } else {
+              var rv = nomOf(evalExpr(cl.value, env));
+              if(cl.op === '<') matched = sn < rv;
+              else if(cl.op === '>') matched = sn > rv;
+              else if(cl.op === '<=') matched = sn <= rv;
+              else if(cl.op === '>=') matched = sn >= rv;
+              else if(cl.op === '==') matched = sn === rv;
+            }
+            if(matched) return evalExpr(cl.result, env);
+          }
+          return node.elseExpr ? evalExpr(node.elseExpr, env) : undefined;
+        }
+        case 'Arrow': return {__closure:true, params:node.params, body:node.body, isBlock:node.isBlock, env:env};
+        case 'Call': {
+          var args = node.args.map(function(a){
+            return a.keyword ? {keyword:a.keyword, value: evalExpr(a.expr, env)} : {value: evalExpr(a.expr, env)};
+          });
+          return callFunction(node.calleeName, args, env);
+        }
+      }
+      throw new Error('cannot evaluate ' + node.type);
+    }
+
+    function invokeClosure(fn, argValues){
+      var newEnv = makeEnv(fn.env);
+      for(var i=0;i<fn.params.length;i++) newEnv.vars.set(fn.params[i], argValues[i]);
+      if(fn.isBlock){
+        try { return runBlock(fn.body, newEnv); }
+        catch(e){ if(e instanceof ReturnSignal) return e.value; throw e; }
+      }
+      return evalExpr(fn.body, newEnv);
+    }
+
+    function callFunction(calleeName, args, callEnv){
+      if(calleeName === 'map'){
+        return args[0].value.map(function(x){ return invokeClosure(args[1].value, [x]); });
+      }
+      if(calleeName === 'filter'){
+        return args[0].value.filter(function(x){ return Boolean(invokeClosure(args[1].value, [x])); });
+      }
+      if(calleeName === 'reduce'){
+        return args[0].value.reduce(function(acc, x){ return invokeClosure(args[2].value, [acc, x]); }, args[1].value);
+      }
+      if(calleeName === 'settle'){
+        var w = args[0].value, strategy = 'nearest';
+        for(var i=0;i<args.length;i++) if(args[i].keyword === 'using') strategy = args[i].value;
+        if(!isWobble(w)) return w;
+        if(strategy === 'average') return w.nominal;
+        if(strategy === 'min') return w.nominal - w.tol;
+        if(strategy === 'max') return w.nominal + w.tol;
+        return Math.round(w.nominal);
+      }
+      var fnVal = envGet(callEnv, calleeName);
+      if(fnVal && fnVal.__closure) return invokeClosure(fnVal, args.map(function(a){ return a.value; }));
+      throw new Error("'" + calleeName + "' isn't a function");
+    }
+
+    function execStatement(stmt, env){
+      switch(stmt.type){
+        case 'Let':
+          if(stmt.wobble){
+            envSet(env, stmt.name, wobble(nomOf(evalExpr(stmt.nominal, env)), nomOf(evalExpr(stmt.tol, env))));
+          } else {
+            envSet(env, stmt.name, evalExpr(stmt.expr, env));
+          }
+          return undefined;
+        case 'Mut': envSet(env, stmt.name, evalExpr(stmt.expr, env)); return undefined;
+        case 'Assign': envAssign(env, stmt.name, evalExpr(stmt.expr, env)); return undefined;
+        case 'Jig': envSet(env, stmt.name, {__closure:true, params:stmt.params, body:stmt.body, isBlock:stmt.isBlock, env:env}); return undefined;
+        case 'Say': OUTPUT_SINK.push(displayValue(evalExpr(stmt.expr, env))); return undefined;
+        case 'Return': throw new ReturnSignal(evalExpr(stmt.expr, env));
+        case 'ExprStmt': return evalExpr(stmt.expr, env);
+      }
+    }
+    function runBlock(block, env){
+      var lastVal;
+      for(var i=0;i<block.body.length;i++) lastVal = execStatement(block.body[i], env);
+      return lastVal;
+    }
+
+    /* ---------- playground wiring ---------- */
+    var EXAMPLES = [
+      { label:'Hello world', code:
+        '# hello.wob\n' +
+        'let name = "Ada"\n' +
+        'say "Hello, {name}!"' },
+      { label:'Wobbly values', code:
+        '# a wobbly value: nominal 12.0, tolerance \u00B10.3\n' +
+        'let radius ~= 12.0 +/- 0.3\n\n' +
+        'jig area(r) => 3.14159 * r * r\n\n' +
+        'say "Area is {area(radius)}"\n\n' +
+        'let exact = settle(radius, using: nearest)\n' +
+        'say "Settled to: {exact}"' },
+      { label:'Pattern match', code:
+        'jig describe(temp) => when temp {\n' +
+        '  is < 0          => "freezing"\n' +
+        '  is ~= 20 +/- 2  => "room temperature"\n' +
+        '  is > 35         => "scorching"\n' +
+        '  else            => "somewhere in between"\n' +
+        '}\n\n' +
+        'say describe(21.4)\n' +
+        'say describe(-5)\n' +
+        'say describe(40)' },
+      { label:'Pipeline', code:
+        'let total = [4, 8, 15, 16, 23, 42]\n' +
+        '  |> filter(x => x > 10)\n' +
+        '  |> map(x => x * 2)\n' +
+        '  |> reduce(0, (sum, x) => sum + x)\n\n' +
+        'say total' },
+      { label:'Closures', code:
+        'jig make_counter() {\n' +
+        '  mut count = 0\n' +
+        '  return () => {\n' +
+        '    count = count + 1\n' +
+        '    count\n' +
+        '  }\n' +
+        '}\n\n' +
+        'let tick = make_counter()\n' +
+        'say tick()\n' +
+        'say tick()\n' +
+        'say tick()' }
+    ];
+
+    var editor = document.getElementById('pg-editor');
+    var output = document.getElementById('pg-output');
+    var tabs = document.querySelectorAll('.pg-tab');
+    var runBtn = document.getElementById('pg-run');
+    var resetBtn = document.getElementById('pg-reset');
+    if(!editor || !output || !runBtn || !resetBtn) return;
+
+    var current = 0;
+
+    function run(){
+      output.classList.remove('pg-error');
+      try{
+        OUTPUT_SINK.length = 0;
+        var ast = parse(tokenize(editor.value + '\n'));
+        var globalEnv = makeEnv(null);
+        globalEnv.vars.set('nearest', 'nearest');
+        globalEnv.vars.set('average', 'average');
+        globalEnv.vars.set('min', 'min');
+        globalEnv.vars.set('max', 'max');
+        for(var i=0;i<ast.body.length;i++) execStatement(ast.body[i], globalEnv);
+        output.textContent = OUTPUT_SINK.length ? OUTPUT_SINK.join('\n') : '(no output yet — try adding a say)';
+      } catch(e){
+        output.classList.add('pg-error');
+        output.textContent = 'Wobbl tripped on this: ' + e.message;
+      }
+    }
+
+    function loadExample(idx){
+      current = idx;
+      editor.value = EXAMPLES[idx].code;
+      tabs.forEach(function(t){ t.classList.toggle('active', Number(t.dataset.idx) === idx); });
+      run();
+    }
+
+    tabs.forEach(function(t){
+      t.addEventListener('click', function(){ loadExample(Number(t.dataset.idx)); });
+    });
+    runBtn.addEventListener('click', run);
+    resetBtn.addEventListener('click', function(){ editor.value = EXAMPLES[current].code; run(); });
+
+    loadExample(0);
+  })();
+</script>
+
+</body>
+</html>
